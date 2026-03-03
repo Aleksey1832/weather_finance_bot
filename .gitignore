@@ -1,0 +1,16 @@
+.venv/
+venv/
+env/
+
+# Настройки PyCharm
+.idea/
+
+# Кэш Python
+__pycache__/
+*.pyc
+
+# Секретные данные (если создадите файл .env с токеном)
+.env
+
+# Логи
+*.log
