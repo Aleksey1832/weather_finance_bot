@@ -1,82 +1,62 @@
-import datetime
-import pandas as pd
+from datetime import datetime
+from services_finance.finance_api.metal_api import MetalDataManager
 
 
 class MetalFormatter:
     """
-    Универсальный форматировщик для металлов.
+    Форматировщик данных по драгметаллам из ЦБ РФ.
     """
 
-    # Словарь настроек: ключ — тикер, значение — (Иконка, Название)
-    CONFIG = {
-        "GC=F": ("🥇", "Gold"),
-        "SI=F": ("🥈", "Silver")
-    }
-
     @staticmethod
-    def _format_row(table, icon, name, usd_rate: float):
-        """Внутренний метод для подготовки одной строки (Золото или Серебро)."""
-        if table is None or table.empty:
-            return f"{icon} <b>{name}:</b> <i>данные недоступны</i>"
+    def get_metals_report():
+        """
+        Собирает отчет на основе данных из MetalDataManager.
+        """
+        manager = MetalDataManager() # Инициализирует менеджер данных для работы с API ЦБ.
 
-        try:
-            last_row = table.iloc[-1]
-            if pd.isna(last_row['Close']) or pd.isna(last_row['Open']):
-                return f"{icon} <b>{name}:</b> <i>обновление...</i>"
+        # 1. Проверяет доступность сервера ЦБ и наличие свежих данных.
+        if not manager.update_rates():
+            return "🥇🥈 <b>Металлы:</b> <i>Сервер ЦБ временно недоступен</i>"
 
-            last_price = float(last_row['Close'])
-            open_price = float(last_row['Open'])
+        def format_row(code, name, icon):
+            # 2. Извлекает список цен для конкретного металла [вчерашняя, сегодняшняя].
+            prices = manager.metal_rates.get(code, [])
 
-            # Динамика и иконка.
-            change_icon = "📈" if last_price >= open_price else "📉"
-            change_pct = ((last_price - open_price) / open_price) * 100
+            # Если данных по металлу нет совсем, выводит заглушку.
+            if not prices:
+                return f"{icon} <b>{name}:</b> <i>нет данных</i>"
 
-            # Форматирует доллары (Золото с запятыми, Серебро обычно).
-            price_fmt = f"{last_price:,.2f}" if "Gold" in name else f"{last_price:.2f}"
+            # 3. Берет последнюю актуальную цену.
+            curr = prices[-1]
 
-            # Подсчет в рублях, если есть курс.
-            rub_text = ""
-            if isinstance(usd_rate, (int, float)) and usd_rate > 0:
-                price_rub = last_price * usd_rate
-                # Для золота (оно дороже 100 руб) убираем копейки, для серебра оставляем
-                formatted_rub = f"{price_rub:,.0f}" if price_rub > 100 else f"{price_rub:,.2f}"
-                rub_text = f" / {formatted_rub} ₽"
+            # 4. Если есть хотя бы две цены, рассчитывает динамику (рост/падение).
+            if len(prices) > 1:
+                prev = prices[-2]
+                change = curr - prev
+                pct = (change / prev) * 100
 
-            return f"{icon} <b>${price_fmt}</b>{rub_text} {change_icon} ({change_pct:+.2f}%)"
-        except:
-            return f"{icon} <b>{name}:</b> <i>ошибка</i>"
+                # 5. Выбирает иконку тренда: стрелка вверх при росте, вниз при падении.
+                arrow = "📈" if change >= 0 else "📉"
+                # 6. Добавляет плюс перед положительным числом процента.
+                sign = "+" if change > 0 else ""
 
-    @staticmethod
-    def get_metals_report(gold_table, silver_table, usd_rate: float):
-        """Собирает общий отчет с единым заголовком и проверкой даты."""
+                return f"{icon} <b>{name}:</b> {curr:,.2f} ₽ {arrow} ({sign}{pct:.2f}%)"
 
-        # 1. Определяем дату (берем по золоту, они в одной связке)
-        if gold_table is not None and not gold_table.empty:
-            last_dt = gold_table.index[-1]
-        elif silver_table is not None and not silver_table.empty:
-            last_dt = silver_table.index[-1]
-        else:
-            return "🥇🥈 <b>Металлы:</b> <i>Биржа закрыта</i>"
+            # Если цена только одна, выводит её без динамики.
+            return f"{icon} <b>{name}:</b> {curr:,.2f} ₽"
 
-        # 2. Логика заголовка (Label)
-        today = datetime.date.today()
-        date_str = last_dt.strftime('%H:%M, %d.%m.%Y')
+        # 7. Формирует строки для золота (код 1) и серебра (код 2)
+        gold_row = format_row(1, "Золото", "🥇")
+        silver_row = format_row(2, "Серебро", "🥈")
 
-        if last_dt.date() == today:
-            label = "<b>Актуальные тикеры металлов (унц.):</b>"
-        else:
-            label = f"Последняя цена металлов (унц.) {date_str}\n⚠️ <i>Торги приостановлены (выходной)</i>"
+        # 8. Получает текущую дату для оформления заголовка.
+        date_str = datetime.now().strftime('%d.%m.%Y')
 
-        # 3. Получаем отформатированные строки
-        gold_row = MetalFormatter._format_row(gold_table, "🥇", "Gold", usd_rate)
-        silver_row = MetalFormatter._format_row(silver_table, "🥈", "Silver", usd_rate)
-
-        # 4. Сборка итогового блока
-        status_header = "<b>Котировки фьючерсов металлов</b>"
-
+        # Собирает все части в один итоговый текстовый блок для Telegram.
         return (
-            f"✅ {status_header}\n"
-            f"{label}\n\n"
+            f"✅ <b>Учетные цены металлов ЦБ РФ</b>\n"
+            f"📅 на {date_str} (руб/грамм):\n\n"
             f"{gold_row}\n"
-            f"{silver_row}"
+            f"{silver_row}\n\n"
+            f"⚠️ <i>Динамика к предыдущему торговому дню.</i>"
         )
