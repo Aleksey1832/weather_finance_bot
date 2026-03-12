@@ -9,6 +9,8 @@ open_bot_token = os.getenv("OPEN_BOT_TOKEN")
 coin_api_key = os.getenv("COIN_API_KEY")
 api_currency = os.getenv("API_CURRENCY")
 api_crypto = os.getenv("API_CRYPTO")
+api_metals = os.getenv("API_METALS")
+
 REQUIRED_CURRENCIES = ['USD', 'EUR','CZK']
 REQUIRED_CRYPTS = ['bitcoin', 'ethereum', 'dogecoin']
 
