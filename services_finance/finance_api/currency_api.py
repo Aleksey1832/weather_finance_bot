@@ -42,6 +42,7 @@ class CurrencyDataManager:
 
     # Методы для совместимости (если они нужны в других местах).
     def get_usd_value(self):
+        """Возвращает цену 1 доллара в рублях"""
         usd_data = self.rates.get('USD')
         self.logger.debug(f"DEBUG ВНУТРИ КЛАССА: Данные USD: {usd_data}")
 
@@ -52,6 +53,7 @@ class CurrencyDataManager:
         return 0.0
 
     def get_eur_value(self):
+        """Возвращает цену 1 евро в рублях"""
         eur_data = self.rates.get('EUR')
         self.logger.debug(f"DEBUG ВНУТРИ КЛАССА: Данные EUR: {eur_data}")
 
