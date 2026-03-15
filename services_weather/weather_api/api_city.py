@@ -34,7 +34,7 @@ def get_weather_by_city(city_name):
         logger.error(f"HTTP ошибка: {http_err}")
     except requests.exceptions.ConnectionError as errc:
         logger.error(f"Ошибка соединения: {errc}")
-    except Exception as e:
-        logger.exception(f"Ошибка запроса города: {e}")
+    except Exception: # noqa
+        logger.exception(f"Ошибка запроса города:")
 
     return None
