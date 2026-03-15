@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 import pandas as pd
 
@@ -9,6 +10,7 @@ class OilFormatter:
 
     @staticmethod
     def get_oil_report(oil_table):
+        logger = logging.getLogger(__name__)
 
         # 1. Защита: Если данных нет совсем.
         if oil_table is None or oil_table.empty:
@@ -29,8 +31,12 @@ class OilFormatter:
             # 5. oil_table.index[-1] — это время закрытия торгов в формате Timestamp.
             last_dt = oil_table.index[-1]
 
-            last_price = float(last_row['Close'])
-            open_price = float(last_row['Open'])
+            # Берет данные только за последний доступный день в таблице.
+            last_day_data = oil_table[oil_table.index.date == last_dt.date()]
+
+            # Достает самую первую цену дня и самую последнюю
+            first_price = float(last_day_data.iloc[0]['Open'])
+            last_price = float(last_day_data.iloc[-1]['Close'])
 
             # 6. Сравнение даты для заголовка.
             today = datetime.now().date()
@@ -45,12 +51,12 @@ class OilFormatter:
             else:
                 label = f"Последняя цена Brent {date_str}:\n⚠️ <i>Торги приостановлены (выходной)</i>\n"
 
-            status = "<b>Котировки фьючерса нефти</b>\n"
-            icon = "📈" if last_price >= open_price else "📉"
-            change_pct = ((last_price - open_price) / open_price) * 100
+            status = "Котировки фьючерса нефти\n"
+            icon = "📈" if last_price >= first_price else "📉"
+            change_pct = ((last_price - first_price) / first_price) * 100
 
-            return f"✅ <b>{status}{label}</b> 🛢${last_price:.2f} {icon} ({change_pct:+.2f}%)"
+            return f"✅ <b>{status}</b>{label}🛢${last_price:.2f} {icon} ({change_pct:+.2f}%)"
 
         except Exception as e:
-            print(f"Ошибка парсинга нефти: {e}")
+            logger.error(f"Ошибка парсинга нефти: {e}")
             return "🛢 <b>Нефть:</b> <i>❌ Технический сбой</i>"
