@@ -3,6 +3,7 @@ import requests
 import xml.etree.ElementTree as et
 from datetime import datetime, timedelta
 from config.settings import api_metals
+from utils.cache_manager import finance_cache
 
 
 class MetalDataManager:
@@ -12,9 +13,17 @@ class MetalDataManager:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.api_url = api_metals
+        self.cache = finance_cache  # Использует общий кэш.
         self.metal_rates = {}  # Здесь храниться: {1: Золото, 2: Серебро}.
 
     def update_rates(self):
+        # 1. Проверяет кэш.
+        cached_val = self.cache.get("metal_rates")
+        if cached_val:
+            self.metal_rates = cached_val
+            self.logger.info("📦 Металлы взяты из кэша")
+            return True
+
         try:
             # 1. Установка периода: сегодня и 10 дней назад для захвата выходных.
             end_date = datetime.now().strftime("%d/%m/%Y")
@@ -34,19 +43,15 @@ class MetalDataManager:
 
             self.logger.info(f"Статус ответа: {response.status_code}")
 
-            if response.status_code == 200:  # 4. Проверка 200.
-                self.logger.info(f"Сырой ответ от ЦБ: {response.text}")
-                if not response.content:
-                    self.logger.error("❌ ЦБ прислал пустой ответ (body is empty)")
-                    return False
-
-                # Печатает кусочек XML для проверки.
-                self.logger.debug(f"XML фрагмент: {response.text[:100]}")
-
+            # 4. Проверяет статус.
+            if response.status_code == 200 and response.content:
                 # 4.1 Парсит XML. Превращает XML-текст в дерево объектов.
                 root = et.fromstring(response.content)
                 temp_rates = {}
                 records = root.findall('Record')
+
+                # Печатает кусочек XML для проверки.
+                self.logger.debug(f"XML фрагмент: {response.text[:100]}")
 
                 if not records:
                     self.logger.warning("⚠️ В XML нет тегов <Record>. Возможно, праздники или нет торгов.")
@@ -57,8 +62,8 @@ class MetalDataManager:
                     try:
                         # 1. Проверяем наличие атрибута ID. Извлекает код металла (1-Золото, 2-Серебро и т.д.).
                         raw_code = record.get('Code')
-                        if raw_code is None:
-                            continue  # Пропускаем, если ID нет.
+
+                        if not raw_code: continue
 
                         # ID: 1-Золото, 2-Серебро, 3-Платина, 4-Палладий.
                         code = int(raw_code)
@@ -75,18 +80,25 @@ class MetalDataManager:
                                 temp_rates[code] = []
                             temp_rates[code].append(price)
 
-                            # После цикла оставьте только последние две цены для каждого металла:
-                            self.metal_rates = {k: v[-2:] for k, v in temp_rates.items()}
-
                     except (ValueError, AttributeError) as e:
                         self.logger.warning(f"⚠️ Пропущена некорректная запись в XML: {e}")
                         continue
 
-                # 5. Сохраняет только две последние цены для расчета динамики (вчера/сегодня).
-                self.metal_rates = {k: v[-2:] for k, v in temp_rates.items()}
+                # 2. Очищаем данные: оставляем только 2 последние цены для динамики
+                processed_rates = {}
+                for code, prices in temp_rates.items():
+                    # Если цен несколько, берем последние две, если одна — дублируем её
+                    if len(prices) >= 2:
+                        processed_rates[code] = prices[-2:]
+                    elif len(prices) == 1:
+                        processed_rates[code] = [prices[0], prices[0]]
 
-                self.logger.info(f"✅ Курсы обновлены: {self.metal_rates}")
-                return True
+                if processed_rates:
+                    self.metal_rates = processed_rates
+                    # 3. Сохраняем в кэш
+                    self.cache.set("metal_rates", processed_rates)
+                    self.logger.info(f"✅ Курсы металлов обновлены: {self.metal_rates}")
+                    return True
 
             self.logger.error(f"❌ Ошибка ЦБ: статус {response.status_code}. Проверьте URL и заголовки.")
             return False
@@ -97,9 +109,9 @@ class MetalDataManager:
 
     def get_metal_value(self, metal_code: int):
         """
+        Возвращает список [вчерашняя_цена, сегодняшняя_цена] или [0, 0].
         Возвращает цену за 1 грамм в рублях.
         1 - Золото, 2 - Серебро, 3 - Платина, 4 - Палладий.
         """
-        # Возвращает последнюю цену или 0.0, если данных нет.
-        prices = self.metal_rates.get(metal_code, [])
-        return prices[-1] if prices else 0.0
+        # Вернет именно тот список из двух цен, который положен в словарь.
+        return self.metal_rates.get(metal_code, [0.0, 0.0])
