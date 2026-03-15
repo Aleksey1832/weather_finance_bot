@@ -1,4 +1,5 @@
 import logging
+from config.settings import LOGGER_LEVEL_FILE, LOGGER_LEVEL_CONSOLE
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -26,19 +27,25 @@ def setup_logger():
         encoding="utf-8"
     )
     file_handler.setFormatter(log_format)
-    file_handler.setLevel(logging.ERROR)  # В файл пишем только ОШИБКИ.
+    file_level = logging.getLevelName(LOGGER_LEVEL_FILE)
+    file_handler.setLevel(file_level)  # В файл пишем только ОШИБКИ.
 
     # Обработчик для консоли
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(log_format)
-    console_handler.setLevel(logging.INFO)  # В консоль пишем ИНФО и ошибки.
+    console_level = logging.getLevelName(LOGGER_LEVEL_CONSOLE)
+    console_handler.setLevel(console_level) # В консоль пишем ИНФО и ошибки.
 
-    # Настройка корневого логгера
+    # 1. Получает объект корневого логгера.
     root_logger = logging.getLogger()
-    # Чистим старые хендлеры, если они были (защита от дубликатов при перезагрузке)
+
+    # 2. Чистит старые хендлеры, если они были (защита от дубликатов при перезагрузке).
     if root_logger.hasHandlers():
         root_logger.handlers.clear()
 
-    root_logger.setLevel(logging.INFO)
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
+    # 3. Устанавливает минимальный общий порог.
+    root_logger.setLevel(logging.DEBUG)
+
+    # 4. Настроенные ранее хендлеры.
+    root_logger.addHandler(file_handler) # Он будет писать только ERROR (как в настройках).
+    root_logger.addHandler(console_handler) # Он будет писать INFO и ERROR.

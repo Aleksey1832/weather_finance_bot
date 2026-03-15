@@ -8,6 +8,7 @@ from services_weather.weather_report.parse_data import format_weather_message
 
 
 logger = logging.getLogger(__name__)
+
 router = Router()
 
 # Реакция на кнопку location_callback - Inline-кнопки "По геопозиции".

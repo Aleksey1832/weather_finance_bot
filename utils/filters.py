@@ -1,7 +1,7 @@
+import logging
 from aiogram import Bot
 from config.settings import raw_channel_id
 from aiogram.enums import ChatMemberStatus
-import logging
 
 logger = logging.getLogger(__name__)
 

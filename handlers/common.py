@@ -10,6 +10,7 @@ from utils.filters import is_user_subscribed
 
 
 logger = logging.getLogger(__name__)
+
 router = Router()
 router.message.filter(F.chat.type == ChatType.PRIVATE) # Будут срабатывать только в личных сообщениях.
 
@@ -138,5 +139,5 @@ async def unknown_message(message: Message):
         "Я тебя не понимаю... 🤔\n\n"
         "Используй кнопки:\n" 
         "«Старт 🏠» или «Отмена ❌»",
-        reply_markup=main_keyboard  # Возвращаем основную клавиатуру
+        reply_markup=main_keyboard  # Возвращаем основную клавиатуру.
     )

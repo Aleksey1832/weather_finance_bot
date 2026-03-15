@@ -8,17 +8,17 @@ def get_currency_report(manager):
     """
     logger = logging.getLogger(__name__)
 
-    # 1. Защита: Если данных нет совсем (пустой словарь в rates) (если ЦБ не ответил).
-    if not manager.rates:
+    # 1. Защита: Если данных нет совсем (пустой словарь в currency_rates) (если ЦБ не ответил).
+    if not manager.currency_rates:
         logger.warning("Валюты отсутствуют в объекте manager!") # API молчит.
         return "💵 <b>Валюты:</b> <i>Ошибка банка или нет связи</i>"
 
     try:
         # 2. Защита: Проверка наличия нужных валют в словаре.
-        # Проверка ключей в словаре manager.rates.
-        if not all(currency in manager.rates for currency in REQUIRED_CURRENCIES):
-            missing = [c for c in REQUIRED_CURRENCIES if c not in manager.rates]
-            logger.error(f"Неполная структура данных. Ожидались: {manager.rates}, отсутствуют: {missing}")
+        # Проверка ключей в словаре manager.currency_rates.
+        if not all(currency in manager.currency_rates for currency in REQUIRED_CURRENCIES):
+            missing = [c for c in REQUIRED_CURRENCIES if c not in manager.currency_rates]
+            logger.error(f"Неполная структура данных. Ожидались: {manager.currency_rates}, отсутствуют: {missing}")
             return "💵 <b>Валюты:</b> <i>Ошибка структуры данных ЦБ</i>"
 
         lines = []
@@ -46,5 +46,5 @@ def get_currency_report(manager):
     except Exception as e:
         # .exception запишет traceback (строку ошибки).
         # Автоматически прикрепит к логу всю историю ошибки (какая именно строка упала).
-        logger.exception(f"Критическая ошибка парсинга крипты: {e}")
+        logger.exception(f"Критическая ошибка парсинга валют: {e}")
         return "💵 <b>Валюты:</b> <i>❌ Технический сбой</i>"

@@ -1,6 +1,8 @@
-import asyncio
-import logging
 from config.logger_setup import setup_logger
+setup_logger()
+
+import logging
+import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
 from config.settings import open_bot_token
@@ -9,12 +11,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 
-# Настройка логирования, чтобы знать, если бот решит "приуныть".
-# logging.basicConfig(
-#     level=logging.ERROR,
-#     format="%(asctime)s - %(levelname)s - %(message)s"
-# )
-setup_logger()
+
 logger = logging.getLogger(__name__)
 
 async def main():

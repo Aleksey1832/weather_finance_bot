@@ -9,16 +9,16 @@ def get_crypto_report(manager, usd_rate: float):
     logger = logging.getLogger(__name__)
 
     # 1. Защита: Если данных нет совсем (пустой словарь в rates) (если CoinGecko не ответил).
-    if not manager.data:
+    if not manager.crypto_rates:
         logger.warning("Крипто-данные отсутствуют в объекте manager!") # API молчит.
         return "₿ <b>Крипто:</b> <i>Данные временно недоступны</i>"
 
     try:
         # 2. Защита: Проверка структуры (CoinGecko использует полные ID).
-        # Проверка ключей в словаре manager.data.
-        if not all(coin in manager.data for coin in REQUIRED_CRYPTS):
-            missing = [c for c in REQUIRED_CRYPTS if c not in manager.data]
-            logger.error(f"Неполная структура данных. Ожидались: {manager.data}, отсутствуют: {missing}")
+        # Проверка ключей в словаре manager.crypto_rates.
+        if not all(coin in manager.crypto_rates for coin in REQUIRED_CRYPTS):
+            missing = [c for c in REQUIRED_CRYPTS if c not in manager.crypto_rates]
+            logger.error(f"Неполная структура данных. Ожидались: {manager.crypto_rates}, отсутствуют: {missing}")
             return "₿ <b>Крипто:</b> <i>Ошибка структуры данных API</i>"
 
         # 3. Словарь иконок.
@@ -57,10 +57,10 @@ def get_crypto_report(manager, usd_rate: float):
 
             # 9. Динамическая иконка тренда (сравнение с 24ч изменением из данных API).
             # CoinGecko обычно отдает это в поле 'usd_24h_change'.
-            change_pct = manager.data.get(coin_id, {}).get('usd_24h_change', 0)
+            change_pct = manager.crypto_rates.get(coin_id, {}).get('usd_24h_change', 0)
             trend = "📈" if change_pct >= 0 else "📉"
 
-            # 9. Составляет список report.
+            # 10. Составляет список report.
             lines.append(f"{icon} <b>{symbol}:</b> ${formatted_usd}{rub_text} {trend}")
 
         logger.info("Крипто-отчет успешно сформирован динамически")

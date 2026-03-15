@@ -4,6 +4,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Уровень логирования в файл bot_logs.log.
+LOGGER_LEVEL_FILE = "ERROR"
+LOGGER_LEVEL_CONSOLE = "INFO"
+
 open_weather_token = os.getenv("OPEN_WEATHER_TOKEN")
 open_bot_token = os.getenv("OPEN_BOT_TOKEN")
 coin_api_key = os.getenv("COIN_API_KEY")

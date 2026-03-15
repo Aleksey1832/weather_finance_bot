@@ -10,6 +10,7 @@ from utils.states import WeatherStates
 
 
 logger = logging.getLogger(__name__)
+
 router = Router()
 
 @router.message(F.text.casefold().in_({"погода", "погода 🌤", "/weather"}))
