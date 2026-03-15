@@ -5,43 +5,49 @@ def process_weather_json(data: dict):
     """
     Превращает сырой JSON в словарь с обработанными данными.
     """
+    # 1. Безопасно достает основные ветки, чтобы не ловить KeyError.
+    main = data.get('main', {})
+    sys = data.get('sys', {})
+    wind = data.get('wind', {})
+    weather_list = data.get('weather', [{}])
+    weather_item = weather_list[0] if weather_list else {}
+
+    # 2. Работа с тайм-зоной и временем.
     tz_offset = data.get('timezone', 0)
     city_tz = timezone(timedelta(seconds=tz_offset))
 
-    sunrise = datetime.fromtimestamp(data['sys']['sunrise'], tz=city_tz).strftime('%H:%M')
-    sunset = datetime.fromtimestamp(data['sys']['sunset'], tz=city_tz).strftime('%H:%M')
+    # 3. Рассвет/закат с защитой от отсутствия данных.
+    sr_ts = sys.get('sunrise', 0)
+    ss_ts = sys.get('sunset', 0)
 
-    # Продолжительность дня (здесь пояс не нужен, это просто разница).
-    duration = data['sys']['sunset'] - data['sys']['sunrise']
+    sunrise = datetime.fromtimestamp(sr_ts, tz=city_tz).strftime('%H:%M') if sr_ts else "--:--"
+    sunset = datetime.fromtimestamp(ss_ts, tz=city_tz).strftime('%H:%M') if ss_ts else "--:--"
+
+    # 4. Продолжительность дня.
+    duration = ss_ts - sr_ts if (ss_ts and sr_ts) else 0
     day_len = f"{duration // 3600}ч. {(duration % 3600) // 60}мин."
 
-    # Направление ветра.
+    # 5. Направление ветра.
     directions = ["⬇️ С", "↙️ СВ", "⬅️ В", "↖️ ЮВ", "⬆️ Ю", "↗️ ЮЗ", "➡️ З", "↘️ СЗ"]
-    wind_deg = data['wind'].get('deg', 0)
+    wind_deg = wind.get('deg', 0)
     wind_dir = directions[int((wind_deg + 22.5) // 45) % 8]
 
-    # Влажность, осадки.
-    raw_humidity = data['main'].get('humidity', 0)
+    # 6. Осадки.
     rain = data.get('rain', {}).get('1h', 0)
     snow = data.get('snow', {}).get('1h', 0)
-
-    # Формирование переменной осадки.
     precip_text = f"🌧 Дождь: {rain}мм" if rain else (f"❄️ Снег: {snow}мм" if snow else "Без осадков")
 
     return {
-        "city": data.get('name'),
-        "temp": round(data['main']['temp']),
-        "feels_like": round(data['main']['feels_like']),
-        "pressure": round(data['main']['pressure'] * 0.75006),
-        "humidity": max(0, raw_humidity - 5),
-        "desc": data['weather'][0]['description'],
-        "wind_speed": data['wind'].get('speed', 0),
+        "city": data.get('name', 'Неизвестно'),
+        "temp": round(main.get('temp', 0)),
+        "feels_like": round(main.get('feels_like', 0)),
+        "pressure": round(main.get('pressure', 0) * 0.75006),
+        "humidity": max(0, main.get('humidity', 5) - 5),
+        "desc": weather_item.get('description', 'нет описания'),
+        "wind_speed": wind.get('speed', 0),
         "wind_dir": wind_dir,
-        "wind_gust": data['wind'].get('gust', 'нет'),
-        "rain": data.get('rain', {}).get('1h', 0),
-        "snow": data.get('snow', {}).get('1h', 0),
+        "wind_gust": wind.get('gust', 'нет'),
         "precip": precip_text,
-        "directions": directions,
         "visibility": data.get('visibility', 0) / 1000,
         "sunrise": sunrise,
         "sunset": sunset,
