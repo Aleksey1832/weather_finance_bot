@@ -1,4 +1,4 @@
-import pytest
+# import pytest  # python -m pytest test/test_weather.py
 from services_weather.weather_data.weather_logic import process_weather_json
 
 
